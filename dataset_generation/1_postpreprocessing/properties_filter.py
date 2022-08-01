@@ -4,6 +4,7 @@
 # @author : Xujun Zhang
 
 import argparse
+import gc
 import os
 import warnings
 import numpy as np
@@ -47,7 +48,7 @@ if __name__ == '__main__':
         with open(src_txt, 'r') as f:
             contents = f.read().split('<EOS>\n')[:-1]  # return list
         # for each seed smile
-        for seed, content in enumerate(tqdm(contents[:])):
+        for seed, content in enumerate(tqdm(contents)):
             # seed = seed + 1297
             content = content.splitlines()
             # collate
@@ -57,7 +58,12 @@ if __name__ == '__main__':
                 line = line.split()
                 if len(line) == 11:
                     for i, lis in enumerate([smiles, mw, logp, rb, hba, hbr, halx]):
-                        lis.append(line[i])
+                        if i == 0:
+                            value = line[i]
+                        else:
+                            value = float(line[i])
+                        lis.append(value)
+
                     # float similarity
                     similarities.append(float(line[7]))
                     labels.append(float(line[8]))
@@ -72,33 +78,51 @@ if __name__ == '__main__':
             df = df[df.iloc[:, -3] <= 0.4]
             df.sort_values(by=8, inplace=True, ascending=True)
             df = df_seed.append(df, sort=False)
-            # # add label
-            # df_ac = df[df.iloc[:, 0].str.endswith('_0')]
-            # df_ac['label'] = np.ones((len(df_ac)))
-            # df_inac = df[~df.iloc[:, 0].str.endswith('_0')]
-            # df_inac['label'] = np.zeros((len(df_inac)))
-            # # merge
-            # df = df_ac.append(df_inac, sort=False)
-            # add to csv
+            #reduce memory consumption
+            del df_seed
+            df.iloc[:, 2] = df.iloc[:, 2].astype(np.float16) #mw
+            df.iloc[:, 3] = df.iloc[:, 3].astype(np.float16) #logp
+            df.iloc[:, 4] = df.iloc[:, 4].astype(np.float16) #rb
+            df.iloc[:, 5] = df.iloc[:, 5].astype(np.uint8) #hba
+            df.iloc[:, 6] = df.iloc[:, 6].astype(np.uint8) #hbr
+            df.iloc[:, 7] = df.iloc[:, 7].astype(np.uint8) #halx
+            df.iloc[:, 8] = df.iloc[:, 8].astype(np.float16) #similarity
+            df.iloc[:, 9] = df.iloc[:, 9].astype(np.uint8) #labels
+            df.iloc[:, 10] = df.iloc[:, 10].astype(np.uint8) #trains
             df.to_csv(tmp_csv, index=False, header=None, mode='a')
+    del contents
+    del df
+    del names
+    del smiles
+    del mw
+    del logp
+    del rb
+    del hba
+    del hbr
+    del halx
+    del similarities
+    del labels
+    del trains
+    gc.collect()
     # read csv
     print('read data from csv file')
-    df = pd.read_csv(tmp_csv, encoding='utf-8')
+    df = pd.read_csv(tmp_csv) #, encoding='utf-8')
+    print(df.head())
     my_filter = properties_filer(df=df)
-    # multiprocess
-    pool = Pool(50)
     print('start filter....')
-    result_dfs = pool.map(my_filter.name2filter, my_filter.names[:])
-    pool.close()
-    pool.join()
-    # drop nan
+    result_dfs = []
+    for name in my_filter.names:
+        tmp_df = my_filter.name2filter(name)
+        result_dfs.append(tmp_df)
+    del tmp_df #free memory
     print('drop nan')
     result_dfs = list(filter(lambda x: x is not None, result_dfs))
     # merge df
     print('start merging')
     new_df = reduce(merge_2_df, result_dfs)
+    print(new_df.head())
     new_df.columns = df.columns
     # write
     print('output to csv')
-    new_df.to_csv(dst_csv, encoding='utf-8', index=False)
+    new_df.to_csv(dst_csv, index=False)
     print('end filtering')

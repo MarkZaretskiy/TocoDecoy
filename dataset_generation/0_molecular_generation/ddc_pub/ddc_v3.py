@@ -30,7 +30,8 @@ from tensorflow.compat.v1.keras.layers import (
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau, LearningRateScheduler
-from tensorflow.keras.utils import multi_gpu_model, plot_model
+from tensorflow.keras.utils import plot_model
+multi_gpu_model=None
 
 from sklearn.preprocessing import StandardScaler  # For the descriptors
 from sklearn.decomposition import PCA  # For the descriptors
