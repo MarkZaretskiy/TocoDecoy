@@ -32,6 +32,7 @@ class properties_filer():
         :param padding: df.iloc[:, 2] = df.loc[:, 'mw']  >>> padding = 2
         :return:
         '''
+        print(f"len(df_tmp): {len(df_tmp)}")
         if len(df_tmp):
             df_seed = pd.DataFrame(df_tmp.iloc[0, :]).T
             if len(df_tmp):
