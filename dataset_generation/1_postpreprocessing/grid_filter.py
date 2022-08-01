@@ -19,13 +19,13 @@ argparser.add_argument('--decoys_size', type=int, default=50)
 argparser.add_argument('--grid_unit', type=int, default=200)
 args = argparser.parse_args()
 #
-path = f'{args.path}/{args.target}'
-src_path = f'{path}/{args.src_path}'
-dst_path = f'{path}/{args.dst_path}'
-src_csv = f'{src_path}/{args.src_file}'
-ecfp_csv = f'{dst_path}/{args.ecfp_file}'
-tsne_csv = f'{dst_path}/{args.tsne_file}'
-dst_csv = f'{dst_path}/{args.grid_unit}_{args.dst_file}'
+# path = f'{args.path}/{args.target}'
+# src_path = f'{path}/{args.src_path}'
+# dst_path = f'{path}/{args.dst_path}'
+src_csv = f'{args.src_file}'
+ecfp_csv = f'{args.ecfp_file}'
+tsne_csv = f'{args.tsne_file}'
+dst_csv = f'{args.grid_unit}_{args.dst_file}'
 # read
 grid_filter = grid_filter(
     src_csv=src_csv,

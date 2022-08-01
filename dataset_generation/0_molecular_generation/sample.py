@@ -12,6 +12,10 @@ import argparse
 import numpy as np
 from my_utils import mol_controller, append2csv
 import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from ddc_pub import ddc_v3 as ddc
@@ -21,7 +25,7 @@ from rdkit import RDLogger
 RDLogger.DisableLog('rdApp.*')
 # set GPU
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 class Jobcontroller():
     def __init__(self, data_file, result_file):
@@ -136,7 +140,7 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--src_file', type=str, default='/path/molecular_generation/data/source/dude.txt')
     argparser.add_argument('--dst_file', type=str, default='/path/molecular_generation/data/result/du_decoys.txt')
-    argparser.add_argument('--target_num_for_each_smi', type=int, default=200)
+    argparser.add_argument('--target_num_for_each_smi', type=int, default=10) #was 200
     args = argparser.parse_args()
     #
     data_file = f'{args.src_file}'
