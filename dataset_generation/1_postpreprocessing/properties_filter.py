@@ -33,12 +33,12 @@ if __name__ == '__main__':
     argparser.add_argument('--dst_file', type=str, default='property_filtered.csv')
     args = argparser.parse_args()
     #
-    path = f'{args.path}/{args.target}'
-    src_path = f'{path}/{args.src_path}'
-    dst_path = f'{path}/{args.dst_path}'
-    src_txt = f'{src_path}/{args.src_file}'
-    tmp_csv = f'{dst_path}/{args.tmp_file}'
-    dst_csv = f'{dst_path}/{args.dst_file}'
+    # path = f'{args.path}/{args.target}'
+    # src_path = f'{path}/{args.src_path}'
+    # dst_path = f'{path}/{args.dst_path}'
+    src_txt = f'{args.src_file}'
+    tmp_csv = f'{args.tmp_file}'
+    dst_csv = f'{args.dst_file}'
     if not os.path.exists(tmp_csv):
         print('collate data from txt to csv....')
         pd.DataFrame(['name', 'smile', 'mw', 'logp', 'rb', 'hba', 'hbr', 'halx', 'similarity', 'label', 'train']).T.to_csv(
@@ -67,6 +67,7 @@ if __name__ == '__main__':
                     print(f'error for {line}')
             # trans to df
             df = pd.DataFrame([names, smiles, mw, logp, rb, hba, hbr, halx, similarities, labels, trains]).T
+            print(df.head())
             df_seed = pd.DataFrame(df.iloc[0, :]).T  # get seed
             df = df[df.iloc[:, -3] <= 0.4]
             df.sort_values(by=8, inplace=True, ascending=True)
