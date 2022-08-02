@@ -54,7 +54,7 @@ if __name__ == '__main__':
             # collate
             names, smiles, mw, logp, rb, hba, hbr, halx, similarities, labels, trains = [], [], [], [], [], [], [], [], [], [], []
             # each generated smile
-            for smi_num, line in enumerate(content[:]):
+            for smi_num, line in enumerate(content[:10]): #TODO
                 line = line.split()
                 if len(line) == 11:
                     for i, lis in enumerate([smiles, mw, logp, rb, hba, hbr, halx]):
@@ -82,7 +82,7 @@ if __name__ == '__main__':
             del df_seed
             df.iloc[:, 2] = df.iloc[:, 2].astype(np.float16) #mw
             df.iloc[:, 3] = df.iloc[:, 3].astype(np.float16) #logp
-            df.iloc[:, 4] = df.iloc[:, 4].astype(np.float16) #rb
+            df.iloc[:, 4] = df.iloc[:, 4].astype(np.uint8) #rotatable bonds
             df.iloc[:, 5] = df.iloc[:, 5].astype(np.uint8) #hba
             df.iloc[:, 6] = df.iloc[:, 6].astype(np.uint8) #hbr
             df.iloc[:, 7] = df.iloc[:, 7].astype(np.uint8) #halx
