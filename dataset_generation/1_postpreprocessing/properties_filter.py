@@ -54,7 +54,7 @@ if __name__ == '__main__':
             # collate
             names, smiles, mw, logp, rb, hba, hbr, halx, similarities, labels, trains = [], [], [], [], [], [], [], [], [], [], []
             # each generated smile
-            for smi_num, line in enumerate(content[:10]): #TODO
+            for smi_num, line in enumerate(content): #TODO
                 line = line.split()
                 if len(line) == 11:
                     for i, lis in enumerate([smiles, mw, logp, rb, hba, hbr, halx]):
