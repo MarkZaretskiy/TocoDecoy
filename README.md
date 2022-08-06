@@ -1,4 +1,7 @@
+It's a fork of https://github.com/5AGE-zhang/TocoDecoy which is optimized for large-scale decoy generation. Some pieces of code were refactored to speed up it and decrease RAM usage. TSNE was changed to much faster UMAP(takes only ~24 hours to cluster 5 million of decoys, while TSNE stucks for ever). Clustering of 5 million of decoys takes less than a day on a computer with 80GB of RAM and 35 cpus. 
+
 TocoDecoy: a new approach to design unbiased datasets for training and benchmarking machine-learning scoring functions
+
 
 Models used in this study:
 

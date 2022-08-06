@@ -12,15 +12,70 @@ import pandas as pd
 from tqdm import tqdm
 from multiprocessing import Pool
 from functools import reduce
-from class_base.property_filter_base import properties_filer
+from itertools import chain
+from time import time
 
 warnings.filterwarnings('ignore')
-
 
 def merge_2_df(df1, df2):
     new_df = df1.append(df2, sort=False)
     return new_df
 
+def generate_tmp_csv(src_txt, tmp_csv):
+    with open(src_txt, 'r') as f:
+            contents = f.read().split('<EOS>\n')[:-1]  # return list
+    # for each seed smile
+    names, smiles, mw, logp, rb, hba, hbr, halx, similarities, labels, trains = [], [], [], [], [], [], [], [], [], [], []
+    for seed, content in enumerate(tqdm(contents)):
+        content = content.splitlines()
+        # collate
+        # each generated smile
+        for smi_num, line in enumerate(content):
+            line = line.split()
+            
+            if len(line) == 11:
+                n = line[-1]
+                s = float(line[7]) #similarity
+                if s > 0.4  and not n.endswith("_0"):
+                    continue # do not take into accout decoys which are highly similary to a seed molecule
+                names.append(n)
+                smiles.append(line[0])
+                for i, lis in enumerate([mw, logp, rb, hba, hbr, halx, similarities, labels, trains]):
+                    value = float(line[i + 1]) #because 0 is smile column
+                    lis.append(value)
+            else:
+                print(f'error for {line}')
+
+    df = pd.DataFrame([names, smiles, mw, logp, rb, hba, hbr, halx, similarities, labels, trains]).T
+    df.columns = ['name', 'smile', 'mw', 'logp', 'rb', 'hba', 'hbr', 'halx', 'similarity', 'label', 'train']
+    print(f"in dataset: {df.shape[0]}")
+    df.loc[:, "mw"] = df.loc[:, "mw"].astype(np.float16) #mw
+    df.loc[:, "logp"] = df.loc[:, "logp"].astype(np.float16) #logp
+    df.loc[:, "rb"] = df.loc[:, "rb"].astype(np.uint8) #rotatable bonds
+    df.loc[:, "hba"] = df.loc[:, "hba"].astype(np.uint8) #hba
+    df.loc[:, "hbr"] = df.loc[:, "hbr"].astype(np.uint8) #hbr
+    df.loc[:, "halx"] = df.loc[:, "halx"].astype(np.uint8) #halx
+    df.loc[:, "similarity"] = df.loc[:, "similarity"].astype(np.float16) #similarity
+    df.loc[:, "label"] = df.loc[:, "label"].astype(np.uint8) #labels
+    df.loc[:, "train"] = df.loc[:,"train"].astype(np.uint8) #trains
+    df.to_csv(tmp_csv, index=False)
+
+def filtering(mol_name):
+    
+    global df
+    property_ranges = {'mw':40, 'logp':1.5, 'rb':1, 'hba':1, 'hbr':1, 'halx':1}
+    df_tmp = df[df['name'].str.startswith(f"{mol_name}_")]
+    conditions = []
+    seed_idx = df_tmp[df_tmp['name'].str.endswith("_0")].index.values[0]
+    for col in ['mw', 'logp', 'rb', 'hba', 'hbr', 'halx']:
+        val = df_tmp.loc[seed_idx, col]
+        conditions_l = df_tmp[col] >= val - property_ranges[col]
+        conditions_r = df_tmp[col] <= val + property_ranges[col]
+        conditions.append(conditions_l)
+        conditions.append(conditions_r)
+
+    condition = reduce(lambda x, y: x & y, conditions, True)
+    return df_tmp[condition].index.values.tolist()
 
 if __name__ == '__main__':
     # init
@@ -34,94 +89,28 @@ if __name__ == '__main__':
     argparser.add_argument('--dst_file', type=str, default='property_filtered.csv')
     args = argparser.parse_args()
     #
-    # path = f'{args.path}/{args.target}'
-    # src_path = f'{path}/{args.src_path}'
-    # dst_path = f'{path}/{args.dst_path}'
     src_txt = f'{args.src_file}'
     tmp_csv = f'{args.tmp_file}'
     dst_csv = f'{args.dst_file}'
     if not os.path.exists(tmp_csv):
         print('collate data from txt to csv....')
-        pd.DataFrame(['name', 'smile', 'mw', 'logp', 'rb', 'hba', 'hbr', 'halx', 'similarity', 'label', 'train']).T.to_csv(
-            tmp_csv, index=False, header=None)
-        # get smiles
-        with open(src_txt, 'r') as f:
-            contents = f.read().split('<EOS>\n')[:-1]  # return list
-        # for each seed smile
-        for seed, content in enumerate(tqdm(contents)):
-            # seed = seed + 1297
-            content = content.splitlines()
-            # collate
-            names, smiles, mw, logp, rb, hba, hbr, halx, similarities, labels, trains = [], [], [], [], [], [], [], [], [], [], []
-            # each generated smile
-            for smi_num, line in enumerate(content): #TODO
-                line = line.split()
-                if len(line) == 11:
-                    for i, lis in enumerate([smiles, mw, logp, rb, hba, hbr, halx]):
-                        if i == 0:
-                            value = line[i]
-                        else:
-                            value = float(line[i])
-                        lis.append(value)
-
-                    # float similarity
-                    similarities.append(float(line[7]))
-                    labels.append(float(line[8]))
-                    trains.append(float(line[9]))
-                    names.append(line[-1])
-                else:
-                    print(f'error for {line}')
-            # trans to df
-            df = pd.DataFrame([names, smiles, mw, logp, rb, hba, hbr, halx, similarities, labels, trains]).T
-            df_seed = pd.DataFrame(df.iloc[0, :]).T  # get seed
-            df = df[df.iloc[:, -3] <= 0.4]
-            df.sort_values(by=8, inplace=True, ascending=True)
-            df = df_seed.append(df, sort=False)
-            #reduce memory consumption
-            del df_seed
-            df.iloc[:, 2] = df.iloc[:, 2].astype(np.float16) #mw
-            df.iloc[:, 3] = df.iloc[:, 3].astype(np.float16) #logp
-            df.iloc[:, 4] = df.iloc[:, 4].astype(np.uint8) #rotatable bonds
-            df.iloc[:, 5] = df.iloc[:, 5].astype(np.uint8) #hba
-            df.iloc[:, 6] = df.iloc[:, 6].astype(np.uint8) #hbr
-            df.iloc[:, 7] = df.iloc[:, 7].astype(np.uint8) #halx
-            df.iloc[:, 8] = df.iloc[:, 8].astype(np.float16) #similarity
-            df.iloc[:, 9] = df.iloc[:, 9].astype(np.uint8) #labels
-            df.iloc[:, 10] = df.iloc[:, 10].astype(np.uint8) #trains
-            df.to_csv(tmp_csv, index=False, header=None, mode='a')
-    del contents
-    del df
-    del names
-    del smiles
-    del mw
-    del logp
-    del rb
-    del hba
-    del hbr
-    del halx
-    del similarities
-    del labels
-    del trains
-    gc.collect()
+        generate_tmp_csv(src_txt, tmp_csv)
     # read csv
     print('read data from csv file')
-    df = pd.read_csv(tmp_csv) #, encoding='utf-8')
+    df = pd.read_csv(tmp_csv)
     print(df.head())
-    my_filter = properties_filer(df=df)
-    print('start filter....')
-    result_dfs = []
-    for name in my_filter.names:
-        tmp_df = my_filter.name2filter(name)
-        result_dfs.append(tmp_df)
-    del tmp_df #free memory
-    print('drop nan')
-    result_dfs = list(filter(lambda x: x is not None, result_dfs))
-    # merge df
-    print('start merging')
-    new_df = reduce(merge_2_df, result_dfs)
-    print(new_df.head())
-    new_df.columns = df.columns
-    # write
-    print('output to csv')
-    new_df.to_csv(dst_csv, index=False)
+    names = df.loc[:, 'name'].values
+    names = set([i.split("_")[0] for i in names])
+    start = time()
+    cpus = 24
+    with Pool(cpus) as p:
+        indices = p.map(filtering, names)
+    finish = time()
+    indices = list(chain(*indices)) #flatten list of lists
+    print(f"before filtering: {df.shape[0]}")
+    df = df.loc[indices, :]
+    print(f"after filtering: {df.shape[0]}")
+
+    df.to_csv(dst_csv, index=False)
     print('end filtering')
+    print(f'filtering takes: {finish - start}')
