@@ -24,8 +24,8 @@ warnings.filterwarnings('ignore')
 from rdkit import RDLogger
 RDLogger.DisableLog('rdApp.*')
 # set GPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class Jobcontroller():
     def __init__(self, data_file, result_file):
@@ -146,6 +146,7 @@ if __name__ == '__main__':
     data_file = f'{args.src_file}'
     result_file = f'{args.dst_file}'
     this_job = Jobcontroller(data_file, result_file)
+    print(f"this_job.model_type: {this_job.model_type}")
     target_num_for_each_smi = args.target_num_for_each_smi
     # remove exists result file
     if os.path.exists(this_job.result_file):
@@ -180,5 +181,3 @@ if __name__ == '__main__':
             print('-------------------End-------------------')
         else:
             print('bad smile')
-
-

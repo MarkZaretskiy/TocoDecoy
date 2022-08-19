@@ -1,8 +1,8 @@
 import os
 
-os.environ[
-    "TF_CPP_MIN_LOG_LEVEL"
-] = "3"  # Suppress UserWarning of TensorFlow while loading the model
+# os.environ[
+    # "TF_CPP_MIN_LOG_LEVEL"
+# ] = "3"  # Suppress UserWarning of TensorFlow while loading the model
 
 import shutil
 import zipfile
@@ -834,16 +834,16 @@ class DDC:
             # Load all sub-models
             try:
                 self.__mol_to_latent_model = load_model(
-                    dirpath + "/mol_to_latent_model.h5"
+                    dirpath + "/mol_to_latent_model.h5", compile=False
                 )
             except:
                 # print("'mol_to_latent_model' not found, setting to None.")
                 self.__mol_to_latent_model = None
 
             self.__latent_to_states_model = load_model(
-                dirpath + "/latent_to_states_model.h5"
+                dirpath + "/latent_to_states_model.h5", compile=False
             )
-            self.__batch_model = load_model(dirpath + "/batch_model.h5")
+            self.__batch_model = load_model(dirpath + "/batch_model.h5", compile=False)
 
             # Build sample_model out of the trained batch_model
             self.__build_sample_model(batch_input_length=1)  # Single-output model
