@@ -19,7 +19,7 @@ from umap import UMAP
 
 import shutil
 from collections import ChainMap
-
+import plotly.express as px
 
 def write_ecfp_full(fps, fname):
     
@@ -130,23 +130,9 @@ def cal_reduction(fps):
     y = reduction.fit_transform(fps)
     return y
 
-def binarize(i, chunk_size, min_1, min_2, max_1, max_2, grid_unit):
-    global dims
-    grid_1 = np.linspace(min_1, max_1, grid_unit + 1)
-    grid_2 = np.linspace(min_2, max_2, grid_unit + 1)
-
-    start, end = i*chunk_size, (i+1)*chunk_size 
-    bins_1 = np.searchsorted(grid_1, dims[start:end, 0], side='left')
-    bins_2 = np.searchsorted(grid_2, dims[start:end, 1], side='left')
-
-    bin2count = {}
-    for k, (b1, b2) in enumerate(zip(bins_1, bins_2)):
-        bin2count.setdefault((b1, b2), k)
-    
-    return bin2count
-
 def clustering_parallell(grid_unit):
     global dims
+    
     min_1, min_2 = dims.min(axis=0)
     max_1, max_2 = dims.max(axis=0)
 
@@ -163,10 +149,30 @@ def clustering_parallell(grid_unit):
         max_1=max_1, max_2=max_2,\
         grid_unit=grid_unit), chunk_is)
     
+#     print(bin_dicts)
     indices = dict(ChainMap(*bin_dicts))
+#     print("indices map: ", indices)
     indices = list(indices.values())
     return indices
 
+def binarize(i, chunk_size, min_1, min_2, max_1, max_2, grid_unit):
+    global dims
+    grid_1 = np.linspace(min_1, max_1, grid_unit + 1)
+    grid_2 = np.linspace(min_2, max_2, grid_unit + 1)
+    start, end = i*chunk_size, (i+1)*chunk_size
+#     print("inside dims: ", dims)
+    bins_1 = np.searchsorted(grid_1, dims[start:end, 0], side='left')
+    bins_2 = np.searchsorted(grid_2, dims[start:end, 1], side='left')
+#     print("bins_1: ", bins_1)
+#     print("bins_2: ", bins_2)
+    
+    bin2count = {}
+    for k, (b1, b2) in enumerate(zip(bins_1, bins_2)):
+        bin2count.setdefault((b1, b2), k)
+#     print("bin2count: ", bin2count)
+    
+    return bin2count
+    
 #some parameters
 FP_DIM = 2048 #initially is 2048
 # init
@@ -179,14 +185,14 @@ argparser.add_argument('--src_file', type=str, default='property_filtered.csv')
 argparser.add_argument('--ecfp_file', type=str, default='ecfp.csv')
 argparser.add_argument('--reduced_file', type=str, default='reduced.csv')
 argparser.add_argument('--dst_file', type=str, default='filtered.csv')
-argparser.add_argument('--decoys_size', type=int, default=50)
-argparser.add_argument('--grid_unit', type=int, default=200)
+argparser.add_argument('--decoys_size', type=int, default=100)
+argparser.add_argument('--grid_unit', type=int, default=1000)
 args = argparser.parse_args()
 #
 src_csv = f'{args.src_file}'
 ecfp_csv = f'{args.ecfp_file}'
 reduced_csv = f'{args.reduced_file}'
-dst_csv = f'{args.dst_file}_{args.grid_unit}.txt'
+dst_csv = f'{args.dst_file.split(".")[0]}_{args.grid_unit}.txt'
 
 
 df = pd.read_csv(src_csv)
@@ -262,7 +268,7 @@ if True:
         print('no need grid filtering')
         shutil.copy(src=src_csv, dst=dst_csv)
     else:
-        dims = df_decoys.loc[:, ['dim_1', 'dim_1']].values
+        dims = df_decoys.loc[:, ['dim_1', 'dim_2']].values
         indices_filtered = clustering_parallell(grid_unit)
         df_decoys = df_decoys.iloc[indices_filtered, :]
         df_decoys.to_csv(dst_csv, index=False)
