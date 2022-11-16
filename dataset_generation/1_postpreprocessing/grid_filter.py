@@ -11,7 +11,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import DataStructs
 from scipy import sparse
-
+import random
 from multiprocessing import Pool
 # from sklearn.manifold import TSNE
 # from MulticoreTSNE import MulticoreTSNE as TSNE
@@ -22,13 +22,13 @@ from collections import ChainMap
 import plotly.express as px
 
 def write_ecfp_full(fps, fname):
-    
+
         if len(fps) < 1:
             raise ValueError("No fingerprints to save")
 
         print("writing ecfp in file")
         with open(fname, "w") as fout:
-            
+
             header = ["name"] + [str(i) for i in range(FP_DIM)] + ["label", "train"]
             header = ",".join(header) + "\n"
             fout.write(header)
@@ -43,7 +43,7 @@ def write_ecfp_full(fps, fname):
 def write_ecfp_sparse(fps, fname):
     if len(fps) < 1:
         raise ValueError("No fingerprints to save")
-    
+
     print("writing ecfp in file")
     with open(fname, "w") as fout:
         fout.write("name,positions,label,train\n")
@@ -68,7 +68,7 @@ def write_ecfp_sparse(fps, fname):
                 fout.write("\n")
 
 def read_ecfp_sparse(fname):
-    
+
     ecfps = [] #name, ecfp, label, train
     print("reading ecfp from sparse format . . . ")
     with open(fname, "r") as fin:
@@ -84,18 +84,18 @@ def read_ecfp_sparse(fname):
             fp = [0] * FP_DIM
             for i in fp_sparse:
                 fp[int(i)] = 1
-            
+
             ecfps.append([name] + fp + [label, train])
             line = fin.readline().strip()
             c += 1
             if c == 10000:
                 print(f"{c} ecfps loaded")
-        
+
     df = pd.DataFrame(ecfps, columns=['name'] + [i for i in range(FP_DIM)] + ['label', 'train'])
     for i in range(FP_DIM):
         df[i] = df[i].astype(np.uint8)
 
-    return df 
+    return df
 
 def cal_ecfp_chunk(indices):
     ecfps = []
@@ -132,7 +132,7 @@ def cal_reduction(fps):
 
 def clustering_parallell(grid_unit):
     global dims
-    
+
     min_1, min_2 = dims.min(axis=0)
     max_1, max_2 = dims.max(axis=0)
 
@@ -148,11 +148,15 @@ def clustering_parallell(grid_unit):
         min_1=min_1, min_2=min_2,\
         max_1=max_1, max_2=max_2,\
         grid_unit=grid_unit), chunk_is)
-    
-#     print(bin_dicts)
-    indices = dict(ChainMap(*bin_dicts))
-#     print("indices map: ", indices)
+
+    #randomly choose points from cells
+    indices = merge_dictionary_list(bin_dicts)
+    for k in indices:
+        indices[k] = random.choice(indices[k])
     indices = list(indices.values())
+
+    print("indices: ", len(indices))
+    print("unique indices: ", len(set(indices)))
     return indices
 
 def binarize(i, chunk_size, min_1, min_2, max_1, max_2, grid_unit):
@@ -165,14 +169,20 @@ def binarize(i, chunk_size, min_1, min_2, max_1, max_2, grid_unit):
     bins_2 = np.searchsorted(grid_2, dims[start:end, 1], side='left')
 #     print("bins_1: ", bins_1)
 #     print("bins_2: ", bins_2)
-    
+
     bin2count = {}
     for k, (b1, b2) in enumerate(zip(bins_1, bins_2)):
-        bin2count.setdefault((b1, b2), k)
+        bin2count.setdefault((b1, b2), start+k)
 #     print("bin2count: ", bin2count)
-    
+
     return bin2count
-    
+
+def merge_dictionary_list(dict_list):
+  return {
+    k: [d.get(k) for d in dict_list if k in d]
+    for k in set().union(*dict_list)
+  }
+
 #some parameters
 FP_DIM = 2048 #initially is 2048
 # init
@@ -186,7 +196,7 @@ argparser.add_argument('--ecfp_file', type=str, default='ecfp.csv')
 argparser.add_argument('--reduced_file', type=str, default='reduced.csv')
 argparser.add_argument('--dst_file', type=str, default='filtered.csv')
 argparser.add_argument('--decoys_size', type=int, default=100)
-argparser.add_argument('--grid_unit', type=int, default=1000)
+argparser.add_argument('--grid_unit', type=int, default=50)
 args = argparser.parse_args()
 #
 src_csv = f'{args.src_file}'
@@ -241,7 +251,7 @@ if True:
     y = cal_reduction(ecfps)
     finish = time()
     print(f'dimensionality reduction takes {finish - start}')
-    
+
     df = pd.DataFrame(y, columns=['dim_1', 'dim_2'])
     df['name'] = names
     df['label'] = labels
